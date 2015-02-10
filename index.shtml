@@ -6,19 +6,25 @@
     <body>
         <h4>
             Demo for:
+            <a href="https://github.com/alvestrand/webrtc-ips">webrtc-ips</a>
+              <p>based on
             <a href="https://github.com/diafygi/webrtc-ips">
                 https://github.com/diafygi/webrtc-ips
             </a>
         </h4>
         <p>
-            This demo secretly makes requests to STUN servers that can log your
-            request. These requests do not show up in developer consoles and
-            cannot be blocked by browser plugins (AdBlock, Ghostery, etc.).
+            This demo shows what IP addresses WebRTC can learn about
+            on your computer.
         </p>
+
+        Your IP as seen from the webserver is
+        <span id="ssi-ip"><!--#echo var="REMOTE_ADDR"--></span>
         <h4>Your local IP addresses:</h4>
         <ul></ul>
         <h4>Your public IP addresses:</h4>
         <ul></ul>
+        <p>Addresses marked with "host" are learned by querying the local interfaces.</p>
+        <p>Addresses marked with "srflx" are learned from the STUN server.</p>
         <script>
             //get the IP addresses associated with an account
             function getIPs(callback){
@@ -49,21 +55,21 @@
 
                     //skip non-candidate events
                     if(ice.candidate){
-
-                        //match just the IP address
-                        var ip_regex = /([0-9]{1,3}(\.[0-9]{1,3}){3})/
-                        var ip_addr = ip_regex.exec(ice.candidate.candidate)[1];
-
+                        //match just the IP address and type
+                        var ip_regex = /([0-9]{1,3}(\.[0-9]{1,3}){3}) \d+ typ (\S+) /
+                        var ip_match = ip_regex.exec(ice.candidate.candidate);
+                        var ip_addr = ip_match[1]
+                        var ip_source = ip_match[3]
                         //remove duplicates
                         if(ip_dups[ip_addr] === undefined)
-                            callback(ip_addr);
+                            callback(ip_addr, ip_source);
 
                         ip_dups[ip_addr] = true;
                     }
                 };
 
                 //create a bogus data channel
-                pc.createDataChannel("");
+                // pc.createDataChannel("");
 
                 //create an offer sdp
                 pc.createOffer(function(result){
@@ -71,13 +77,19 @@
                     //trigger the stun server request
                     pc.setLocalDescription(result, function(){}, function(){});
 
-                }, function(){});
+                }, function(){}, {mandatory: { OfferToReceiveVideo: true }});
             }
 
+            // See if we know your IP already
+            ssi_ip = document.getElementById("ssi-ip");
+            // Mangling is required to avoid substitution of matched string.
+            if (ssi_ip.innerHTML === '<!--' + '#echo var="REMOTE_ADDR"-->') {
+               ssi_ip.innerHTML = "not inserted by server";
+            }
             //insert IP addresses into the page
-            getIPs(function(ip){
+            getIPs(function(ip, source){
                 var li = document.createElement("li");
-                li.textContent = ip;
+                li.textContent = ip + ' ' + source
 
                 //local IPs
                 if (ip.match(/^(192\.168\.|169\.254\.|10\.|172\.(1[6-9]|2\d|3[01]))/))

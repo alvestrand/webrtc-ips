@@ -1,72 +1,26 @@
 # STUN IP Address requests for WebRTC
 
-Demo: https://diafygi.github.io/webrtc-ips/
+Based on: https://diafygi.github.io/webrtc-ips/
 
 ### What this does
 
-Firefox and Chrome have implemented WebRTC that allow requests to STUN servers be made that will return the local and public IP addresses for the user. These request results are available to javascript, so you can now obtain a users local and public IP addresses in javascript. This demo is an example implementation of that.
+This demo shows something about IP addresses available through WebRTC.
 
-Additionally, these STUN requests are made outside of the normal XMLHttpRequest procedure, so they are not visible in the developer console or able to be blocked by plugins such as AdBlockPlus or Ghostery. This makes these types of requests available for online tracking if an advertiser sets up a STUN server with a wildcard domain.
+Some of these are learned from STUN servers, some are learned locally.
 
-### Code
+Some are already known to a Web server serving the page, some are not.
 
-Here is the annotated demo function that makes the STUN request. You can copy and paste this into the Firefox or Chrome developer console to run the test.
+### Running the demo
 
-```javascript
-//get the IP addresses associated with an account
-function getIPs(callback){
-    var ip_dups = {};
+The demo includes a lighttpd config file that will allow you to run
+the demo locally.
 
-    //compatibility for firefox and chrome
-    var RTCPeerConnection = window.RTCPeerConnection
-        || window.mozRTCPeerConnection
-        || window.webkitRTCPeerConnection;
-    var mediaConstraints = {
-        optional: [{RtpDataChannels: true}]
-    };
+To run lighttpd:
 
-    //firefox already has a default stun server in about:config
-    //    media.peerconnection.default_iceservers =
-    //    [{"url": "stun:stun.services.mozilla.com"}]
-    var servers = undefined;
+  lighttpd -D -f lighttpd.conf
 
-    //add same stun server for chrome
-    if(window.webkitRTCPeerConnection)
-        servers = {iceServers: [{urls: "stun:stun.services.mozilla.com"}]};
+To access the demo:
 
-    //construct a new RTCPeerConnection
-    var pc = new RTCPeerConnection(servers, mediaConstraints);
+  <a href="localhost:3100">localhost:3100</a>
 
-    //listen for candidate events
-    pc.onicecandidate = function(ice){
-
-        //skip non-candidate events
-        if(ice.candidate){
-
-            //match just the IP address
-            var ip_regex = /([0-9]{1,3}(\.[0-9]{1,3}){3})/
-            var ip_addr = ip_regex.exec(ice.candidate.candidate)[1];
-
-            //remove duplicates
-            if(ip_dups[ip_addr] === undefined)
-                callback(ip_addr);
-
-            ip_dups[ip_addr] = true;
-        }
-    };
-
-    //create a bogus data channel
-    pc.createDataChannel("");
-
-    //create an offer sdp
-    pc.createOffer(function(result){
-
-        //trigger the stun server request
-        pc.setLocalDescription(result, function(){}, function(){});
-
-    }, function(){});
-}
-
-//Test: Print the IP addresses into the console
-getIPs(function(ip){console.log(ip);});
-```
+For variations, try <yourhostname>:3100.
